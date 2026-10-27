@@ -1,0 +1,28 @@
+# Optional "Blueprint": Render -> New + -> Blueprint -> pick this repo. (Or fill the same values by hand in the dashboard.)
+services:
+  - type: web
+    name: agentic-rag-guardrails
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run streamlit_app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
+    healthCheckPath: /_stcore/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: LLM_PROVIDER
+        value: openai
+      - key: LLM_MODEL
+        value: llama-3.3-70b-versatile
+      - key: OPENAI_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: OPENAI_API_KEY
+        sync: false            # you type the real key in the Render dashboard - never in this file
+      - key: EMBEDDER
+        value: tfidf
+      - key: DAILY_LIMIT
+        value: "150"
+      - key: SESSION_LIMIT
+        value: "12"
+      - key: REPO_URL
+        sync: false
