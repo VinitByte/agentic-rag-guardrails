@@ -23,6 +23,7 @@ PROTOCOL = (
     'To use a tool: {"thought": "<short reason>", "action": "<tool name>", "action_input": {...}}\n'
     'When finished: {"final_answer": "<answer>"}\n'
     "In final_answer, cite document facts exactly as [file p.N] using the cite tags you were shown.\n"
+    "Write that JSON object as plain text. Do NOT use any built-in function-calling format.\n"
 )
 
 
