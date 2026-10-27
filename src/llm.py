@@ -43,6 +43,20 @@ class OllamaLLM(BaseLLM):
         return r.json()["message"]["content"]
 
 
+def _retry_wait(r, attempts: int) -> float:
+    """Seconds to wait after HTTP 429: honour the Retry-After header and the 'try again in 22.5s' hint in the body."""
+    cands = []
+    try:
+        cands.append(float(r.headers.get("retry-after")))
+    except (TypeError, ValueError):
+        pass
+    m = re.search(r"try again in ([\d.]+)\s*(ms|s)\b", getattr(r, "text", "") or "")
+    if m:
+        v = float(m.group(1))
+        cands.append(v / 1000 if m.group(2) == "ms" else v)
+    return min((max(cands) if cands else 2.0 * attempts) + 1.0, 45.0)
+
+
 def _recover_tool_call(body: str):
     """Some models (e.g. gpt-oss on Groq) answer in their *native* tool-call format even though we send no
     `tools`; the API then rejects the request with code 'tool_use_failed' and returns what the model wrote
@@ -81,18 +95,17 @@ class OpenAICompatLLM(BaseLLM):
             payload["response_format"] = {"type": "json_object"}
         headers = {"Authorization": f"Bearer {self.api_key}"}
         try:
-            attempts = 0
+            attempts, waited = 0, 0.0
             while True:
                 attempts += 1
                 r = requests.post(f"{self.base_url}/chat/completions", json=payload,
                                   headers=headers, timeout=300)
-                if r.status_code == 429 and attempts < 4:      # free tiers rate-limit: wait and retry
-                    try:
-                        wait = float(r.headers.get("retry-after", 2 * attempts))
-                    except ValueError:
-                        wait = 2 * attempts
-                    time.sleep(min(wait, 20))
-                    continue
+                if r.status_code == 429 and attempts < 5:       # free tiers rate-limit: wait, then retry
+                    wait = _retry_wait(r, attempts)
+                    if waited + wait <= 75:                      # never keep the user waiting for minutes
+                        waited += wait
+                        time.sleep(wait)
+                        continue
                 if r.status_code == 400:
                     recovered = _recover_tool_call(getattr(r, "text", "") or "")
                     if recovered is not None:
@@ -110,6 +123,9 @@ class OpenAICompatLLM(BaseLLM):
                     detail = " | " + resp.text[:300]
                 except Exception:  # noqa: BLE001
                     pass
+            if resp is not None and getattr(resp, "status_code", None) == 429:
+                raise LLMError("The free LLM tier is rate-limited right now (tokens per minute). "
+                               f"Please wait about 30-60 seconds and try again. [{detail.strip(' |')[:220]}]") from e
             raise LLMError(f"LLM API request failed: {e}{detail}") from e
         return r.json()["choices"][0]["message"]["content"]
 
