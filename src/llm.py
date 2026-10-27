@@ -54,20 +54,32 @@ class OpenAICompatLLM(BaseLLM):
             payload["response_format"] = {"type": "json_object"}
         headers = {"Authorization": f"Bearer {self.api_key}"}
         try:
-            for attempt in range(4):                      # free tiers rate-limit (HTTP 429): wait and retry
+            attempts = 0
+            while True:
+                attempts += 1
                 r = requests.post(f"{self.base_url}/chat/completions", json=payload,
                                   headers=headers, timeout=300)
-                if r.status_code == 429 and attempt < 3:
+                if r.status_code == 429 and attempts < 4:      # free tiers rate-limit: wait and retry
                     try:
-                        wait = float(r.headers.get("retry-after", 2 * (attempt + 1)))
+                        wait = float(r.headers.get("retry-after", 2 * attempts))
                     except ValueError:
-                        wait = 2 * (attempt + 1)
+                        wait = 2 * attempts
                     time.sleep(min(wait, 20))
                     continue
+                if r.status_code == 400 and "response_format" in payload:
+                    payload.pop("response_format")            # model has no JSON mode -> rely on the prompt;
+                    continue                                  # agents.extract_json() copes with plain text
                 r.raise_for_status()
                 break
         except requests.RequestException as e:
-            raise LLMError(f"LLM API request failed: {e}") from e
+            detail = ""
+            resp = getattr(e, "response", None)      # show WHY the API refused (e.g. model_not_found)
+            if resp is not None:
+                try:
+                    detail = " | " + resp.text[:300]
+                except Exception:  # noqa: BLE001
+                    pass
+            raise LLMError(f"LLM API request failed: {e}{detail}") from e
         return r.json()["choices"][0]["message"]["content"]
 
 
