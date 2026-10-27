@@ -1,0 +1,9 @@
+# Extras for local development / the notebook / running the full evaluation
+-r requirements.txt
+sentence-transformers   # dense embeddings for hybrid search (large download; not needed on the cloud)
+pytest
+pandas
+matplotlib
+jupyter
+# docling              # optional: IBM's PDF parser (heavy)
+# ibm-watsonx-ai       # optional: IBM watsonx.ai backend
