@@ -4,6 +4,7 @@ Providers: ollama (local), openai (any OpenAI-compatible API), watsonx, mock (te
 """
 from __future__ import annotations
 
+import json
 import re
 import time
 
@@ -42,6 +43,32 @@ class OllamaLLM(BaseLLM):
         return r.json()["message"]["content"]
 
 
+def _recover_tool_call(body: str):
+    """Some models (e.g. gpt-oss on Groq) answer in their *native* tool-call format even though we send no
+    `tools`; the API then rejects the request with code 'tool_use_failed' and returns what the model wrote
+    in `failed_generation`. We translate that back into our own {"action": ..., "action_input": ...} format."""
+    try:
+        err = json.loads(body)["error"]
+    except Exception:  # noqa: BLE001
+        return None
+    if err.get("code") != "tool_use_failed" or not err.get("failed_generation"):
+        return None
+    fg = str(err["failed_generation"])
+    try:
+        obj = json.loads(fg[fg.index("{"): fg.rindex("}") + 1])
+    except (ValueError, json.JSONDecodeError):
+        return fg
+    if isinstance(obj, dict) and "name" in obj and "arguments" in obj:
+        args = obj["arguments"]
+        if isinstance(args, str):
+            try:
+                args = json.loads(args)
+            except json.JSONDecodeError:
+                args = {"query": args}
+        return json.dumps({"thought": "", "action": obj["name"], "action_input": args})
+    return json.dumps(obj)
+
+
 class OpenAICompatLLM(BaseLLM):
     name = "openai"
 
@@ -66,6 +93,10 @@ class OpenAICompatLLM(BaseLLM):
                         wait = 2 * attempts
                     time.sleep(min(wait, 20))
                     continue
+                if r.status_code == 400:
+                    recovered = _recover_tool_call(getattr(r, "text", "") or "")
+                    if recovered is not None:
+                        return recovered
                 if r.status_code == 400 and "response_format" in payload:
                     payload.pop("response_format")            # model has no JSON mode -> rely on the prompt;
                     continue                                  # agents.extract_json() copes with plain text
