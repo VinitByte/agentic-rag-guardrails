@@ -31,7 +31,7 @@ EMBEDDER = os.getenv("EMBEDDER", "sentence-transformers")  # sentence-transforme
 EMBED_MODEL = os.getenv("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 150
-TOP_K = 5
+TOP_K = int(os.getenv("TOP_K", "5"))   # fewer chunks = fewer tokens (use 3 on rate-limited free LLM tiers)
 
 # --- Guardrail limits ---
 MAX_STEPS = 6          # reasoning/tool steps per agent
