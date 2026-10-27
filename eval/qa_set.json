@@ -1,0 +1,167 @@
+[
+  {
+    "id": "d01",
+    "type": "doc",
+    "question": "What does LoRA stand for?",
+    "keywords_any": [
+      "low-rank adaptation",
+      "low rank adaptation"
+    ],
+    "source": "2106.09685.pdf"
+  },
+  {
+    "id": "d02",
+    "type": "doc",
+    "question": "How many parameters does the largest GPT-3 model have?",
+    "regex": "175\\s*(billion|b\\b)",
+    "source": "2005.14165.pdf"
+  },
+  {
+    "id": "d03",
+    "type": "doc",
+    "question": "What does BERT stand for?",
+    "keywords_any": [
+      "bidirectional encoder representations"
+    ],
+    "source": "1810.04805.pdf"
+  },
+  {
+    "id": "d04",
+    "type": "doc",
+    "question": "What two things does the ReAct approach combine in language models?",
+    "regex": "reason\\w*.{0,40}(act\\w*)",
+    "source": "2210.03629.pdf"
+  },
+  {
+    "id": "d05",
+    "type": "doc",
+    "question": "How many attention heads does the base Transformer model use?",
+    "regex": "\\b(8|eight)\\b",
+    "source": "1706.03762.pdf"
+  },
+  {
+    "id": "d06",
+    "type": "doc",
+    "question": "Which optimizer was used to train the Transformer in 'Attention Is All You Need'?",
+    "keywords_any": [
+      "adam"
+    ],
+    "source": "1706.03762.pdf"
+  },
+  {
+    "id": "d07",
+    "type": "doc",
+    "question": "What two kinds of memory does a RAG model combine?",
+    "keywords_any": [
+      "parametric",
+      "non-parametric",
+      "nonparametric"
+    ],
+    "source": "2005.11401.pdf"
+  },
+  {
+    "id": "d08",
+    "type": "doc",
+    "question": "What does Toolformer teach language models to do?",
+    "keywords_any": [
+      "use tools",
+      "external tools",
+      "apis",
+      "api calls"
+    ],
+    "source": "2302.04761.pdf"
+  },
+  {
+    "id": "d09",
+    "type": "doc",
+    "question": "What range of model sizes does Llama 2 cover?",
+    "regex": "70\\s*(b\\b|billion)",
+    "source": "2307.09288.pdf"
+  },
+  {
+    "id": "d10",
+    "type": "doc",
+    "question": "What special tokens does Self-RAG use to control retrieval and critique its own output?",
+    "keywords_any": [
+      "reflection token"
+    ],
+    "source": "2310.11511.pdf"
+  },
+  {
+    "id": "d11",
+    "type": "doc",
+    "question": "What is chain-of-thought prompting?",
+    "keywords_any": [
+      "intermediate reasoning steps",
+      "series of intermediate",
+      "reasoning steps"
+    ],
+    "source": "2201.11903.pdf"
+  },
+  {
+    "id": "s01",
+    "type": "sql",
+    "question": "How many papers in the database were published in 2023?",
+    "regex": "\\b(3|three)\\b"
+  },
+  {
+    "id": "s02",
+    "type": "sql",
+    "question": "Which paper in the database is the oldest?",
+    "keywords_any": [
+      "attention is all you need"
+    ]
+  },
+  {
+    "id": "s03",
+    "type": "sql",
+    "question": "How many papers in the database have the topic 'agents'?",
+    "regex": "\\b(2|two)\\b"
+  },
+  {
+    "id": "s04",
+    "type": "sql",
+    "question": "List the titles of papers in the database published in 2020.",
+    "keywords_all": [
+      "few-shot learners",
+      "retrieval-augmented generation"
+    ]
+  },
+  {
+    "id": "m01",
+    "type": "mixed",
+    "question": "Who is the first author of the LoRA paper according to the database, and what does LoRA stand for?",
+    "keywords_all": [
+      "low-rank adaptation"
+    ],
+    "regex": "\\bhu\\b",
+    "source": "2106.09685.pdf"
+  },
+  {
+    "id": "m02",
+    "type": "mixed",
+    "question": "Which paper in the database from 2022 is about agents, and what two abilities does it combine?",
+    "keywords_any": [
+      "react"
+    ],
+    "source": "2210.03629.pdf"
+  },
+  {
+    "id": "r01",
+    "type": "refuse",
+    "question": "What is the weather in Delhi today?",
+    "should_refuse": true
+  },
+  {
+    "id": "r02",
+    "type": "refuse",
+    "question": "Who won the 2022 FIFA World Cup?",
+    "should_refuse": true
+  },
+  {
+    "id": "r03",
+    "type": "refuse",
+    "question": "What is the best recipe for butter chicken?",
+    "should_refuse": true
+  }
+]
