@@ -11,7 +11,7 @@ st.set_page_config(page_title="Agentic RAG + Guardrails", page_icon="🛡️", l
 
 # 1) Streamlit secrets -> environment variables (must happen BEFORE importing src.config)
 for _k in ("LLM_PROVIDER", "LLM_MODEL", "OPENAI_BASE_URL", "OPENAI_API_KEY", "EMBEDDER",
-           "DAILY_LIMIT", "SESSION_LIMIT", "REPO_URL"):
+           "DAILY_LIMIT", "SESSION_LIMIT", "REPO_URL", "TOP_K"):
     try:
         if _k in st.secrets:
             os.environ[_k] = str(st.secrets[_k])
@@ -75,17 +75,34 @@ def allow_request(n: int):
     return True, ""
 
 
-def run(question: str, guardrails_on: bool, retriever) -> dict:
+@st.cache_resource
+def answer_cache():
+    return {}
+
+
+def run(question: str, guardrails_on: bool, corpus: str, retriever) -> dict:
+    """Run one question. Identical questions are answered from a cache, which saves free-tier LLM quota."""
+    key = (question.strip().lower(), guardrails_on, corpus)
+    cache = answer_cache()
+    if key in cache:
+        return {**cache[key], "cached": True}
     db = config.DB_PATH
     if not guardrails_on:  # attack lab: the unprotected agent only ever touches a throw-away copy
         db = Path(tempfile.mkdtemp()) / "papers.db"
         shutil.copy(config.DB_PATH, db)
     rag = AgenticRAG(db_path=db, llm=get_llm(), guardrails_enabled=guardrails_on, retriever=retriever)
-    return rag.ask(question)
+    out = rag.ask(question)
+    if not out.get("error") and not str(out["answer"]).startswith(("LLM error", "Stopped by guardrails")):
+        if len(cache) > 200:
+            cache.clear()
+        cache[key] = out
+    return out
 
 
 def render(out: dict, label: str):
     st.markdown(f"#### {label}")
+    if out.get("cached"):
+        st.caption("⚡ cached answer (no LLM quota used)")
     if out["blocked"]:
         st.warning("🛡️ Blocked / sanitised by guardrails")
     st.write(out["answer"])
@@ -122,7 +139,8 @@ with st.sidebar:
     st.selectbox("Example prompts", list(EXAMPLES), key="example")
     st.button("Load example", on_click=load_example)
     st.divider()
-    st.caption(f"Public demo limits: {SESSION_LIMIT} requests per session.")
+    st.caption(f"Public demo limits: {SESSION_LIMIT} requests per session. The demo runs on a free LLM tier with a "
+               "per-minute token limit - if you see a rate-limit message, wait ~30-60 s. Compare mode uses 2x the quota.")
     st.markdown(f"[📂 Source code on GitHub]({REPO_URL})")
     st.caption("OFF mode runs on a throw-away copy of the database, so attacks cannot damage anything.")
 
@@ -133,11 +151,12 @@ if st.button("Ask", type="primary") and question.strip():
     if not ok:
         st.error(msg)
     else:
-        retriever = retrievers["poisoned" if corpus_label.startswith("Poisoned") else "papers"]
+        corpus_key = "poisoned" if corpus_label.startswith("Poisoned") else "papers"
+        retriever = retrievers[corpus_key]
         try:
             with st.spinner("Agents working ..."):
                 if mode.startswith("⚔️"):
-                    off, on = run(question, False, retriever), run(question, True, retriever)
+                    off, on = run(question, False, corpus_key, retriever), run(question, True, corpus_key, retriever)
                     c1, c2 = st.columns(2)
                     with c1:
                         render(off, "⚠️ Guardrails OFF")
@@ -145,8 +164,8 @@ if st.button("Ask", type="primary") and question.strip():
                         render(on, "🛡️ Guardrails ON")
                 elif mode.startswith("⚠️"):
                     st.error("Unprotected mode: the agent may obey malicious instructions (demo only).")
-                    render(run(question, False, retriever), "⚠️ Guardrails OFF")
+                    render(run(question, False, corpus_key, retriever), "⚠️ Guardrails OFF")
                 else:
-                    render(run(question, True, retriever), "🛡️ Guardrails ON")
+                    render(run(question, True, corpus_key, retriever), "🛡️ Guardrails ON")
         except Exception as e:  # noqa: BLE001 - show a friendly message instead of a stack trace
             st.error(f"Something went wrong while calling the language model: {e}")
